@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -90,7 +90,7 @@ class ZoneScript;
 
 typedef std::unordered_map<Player*, UpdateData> UpdateDataMapType;
 
-class Object
+class TC_GAME_API Object
 {
     public:
         virtual ~Object();
@@ -101,9 +101,6 @@ class Object
         virtual void RemoveFromWorld();
 
         ObjectGuid GetGUID() const { return GetGuidValue(OBJECT_FIELD_GUID); }
-        uint32 GetGUIDLow() const { return GetGuidValue(OBJECT_FIELD_GUID).GetCounter(); }
-        uint32 GetGUIDMid() const { return GetGuidValue(OBJECT_FIELD_GUID).GetEntry(); }
-        uint32 GetGUIDHigh() const { return GetGuidValue(OBJECT_FIELD_GUID).GetHigh(); }
         PackedGuid const& GetPackGUID() const { return m_PackGUID; }
         uint32 GetEntry() const { return GetUInt32Value(OBJECT_FIELD_ENTRY); }
         void SetEntry(uint32 entry) { SetUInt32Value(OBJECT_FIELD_ENTRY, entry); }
@@ -207,7 +204,7 @@ class Object
         Object();
 
         void _InitValues();
-        void _Create(uint32 guidlow, uint32 entry, HighGuid guidhigh);
+        void _Create(ObjectGuid::LowType guidlow, uint32 entry, HighGuid guidhigh);
         std::string _ConcatFields(uint16 startIndex, uint16 size) const;
         void _LoadIntoDataField(std::string const& data, uint32 startOffset, uint32 count);
 
@@ -233,6 +230,10 @@ class Object
         uint16 m_valuesCount;
 
         uint16 _fieldNotifyFlags;
+
+        virtual void AddToObjectUpdate() = 0;
+        virtual void RemoveFromObjectUpdate() = 0;
+        void AddToObjectUpdateIfNeeded();
 
         bool m_objectUpdated;
 
@@ -396,7 +397,7 @@ enum MapObjectCellMoveState
     MAP_OBJECT_CELL_MOVE_INACTIVE, //in move list but should not move
 };
 
-class MapObject
+class TC_GAME_API MapObject
 {
         friend class Map; //map for moving creatures
         friend class ObjectGridLoader; //grid loader for loading creatures
@@ -421,7 +422,7 @@ class MapObject
         }
 };
 
-class WorldObject : public Object, public WorldLocation
+class TC_GAME_API WorldObject : public Object, public WorldLocation
 {
     protected:
         explicit WorldObject(bool isWorldObject); //note: here it means if it is in grid object list or world object list
@@ -430,7 +431,7 @@ class WorldObject : public Object, public WorldLocation
 
         virtual void Update (uint32 /*time_diff*/) { }
 
-        void _Create(uint32 guidlow, HighGuid guidhigh, uint32 phaseMask);
+        void _Create(ObjectGuid::LowType guidlow, HighGuid guidhigh, uint32 phaseMask);
         virtual void RemoveFromWorld() override;
 
         void GetNearPoint2D(float &x, float &y, float distance, float absAngle) const;
@@ -514,7 +515,7 @@ class WorldObject : public Object, public WorldLocation
         float GetGridActivationRange() const;
         float GetVisibilityRange() const;
         float GetSightRange(WorldObject const* target = NULL) const;
-        bool CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth = false, bool distanceCheck = false) const;
+        bool CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth = false, bool distanceCheck = false, bool checkAlert = false) const;
 
         FlaggedValuesArray32<int32, uint32, StealthType, TOTAL_STEALTH_TYPES> m_stealth;
         FlaggedValuesArray32<int32, uint32, StealthType, TOTAL_STEALTH_TYPES> m_stealthDetect;
@@ -535,6 +536,7 @@ class WorldObject : public Object, public WorldLocation
         Map const* GetBaseMap() const;
 
         void SetZoneScript();
+        void ClearZoneScript();
         ZoneScript* GetZoneScript() const { return m_zoneScript; }
 
         TempSummon* SummonCreature(uint32 id, Position const &pos, TempSummonType spwtype = TEMPSUMMON_MANUAL_DESPAWN, uint32 despwtime = 0, uint32 vehId = 0) const;
@@ -553,7 +555,15 @@ class WorldObject : public Object, public WorldLocation
 
         void DestroyForNearbyPlayers();
         virtual void UpdateObjectVisibility(bool forced = true);
+        virtual void UpdateObjectVisibilityOnCreate()
+        {
+            UpdateObjectVisibility(true);
+        }
+
         void BuildUpdate(UpdateDataMapType&) override;
+
+        void AddToObjectUpdate() override;
+        void RemoveFromObjectUpdate() override;
 
         //relocation and visibility system functions
         void AddToNotify(uint16 f) { m_notifyflags |= f;}
@@ -634,9 +644,9 @@ class WorldObject : public Object, public WorldLocation
 
         bool CanNeverSee(WorldObject const* obj) const;
         virtual bool CanAlwaysSee(WorldObject const* /*obj*/) const { return false; }
-        bool CanDetect(WorldObject const* obj, bool ignoreStealth) const;
+        bool CanDetect(WorldObject const* obj, bool ignoreStealth, bool checkAlert = false) const;
         bool CanDetectInvisibilityOf(WorldObject const* obj) const;
-        bool CanDetectStealthOf(WorldObject const* obj) const;
+        bool CanDetectStealthOf(WorldObject const* obj, bool checkAlert = false) const;
 };
 
 namespace Trinity

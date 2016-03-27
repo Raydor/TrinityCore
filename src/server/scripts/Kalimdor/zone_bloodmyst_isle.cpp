@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -240,11 +240,6 @@ class npc_sironas : public CreatureScript
 public:
     npc_sironas() : CreatureScript("npc_sironas") { }
 
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_sironasAI(creature);
-    }
-
     struct npc_sironasAI : public ScriptedAI
     {
         npc_sironasAI(Creature* creature) : ScriptedAI(creature) { }
@@ -272,7 +267,7 @@ public:
 
                 if (killer->GetGUID() == legoso->GetGUID() ||
                     (group && group->IsMember(killer->GetGUID())) ||
-                    killer->GetGUIDLow() == legoso->AI()->GetData(DATA_EVENT_STARTER_GUID))
+                    killer->GetGUID().GetCounter() == legoso->AI()->GetData(DATA_EVENT_STARTER_GUID))
                     legoso->AI()->DoAction(ACTION_LEGOSO_SIRONAS_KILLED);
             }
         }
@@ -343,6 +338,11 @@ public:
         GuidList _beamGuidList;
         EventMap _events;
     };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_sironasAI(creature);
+    }
 };
 
 /*######
@@ -353,11 +353,6 @@ class npc_demolitionist_legoso : public CreatureScript
 {
 public:
     npc_demolitionist_legoso() : CreatureScript("npc_demolitionist_legoso") { }
-
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_demolitionist_legosoAI(creature);
-    }
 
     struct npc_demolitionist_legosoAI : public npc_escortAI
     {
@@ -370,7 +365,7 @@ public:
         {
             if (quest->GetQuestId() == QUEST_ENDING_THEIR_WORLD)
             {
-                SetData(DATA_EVENT_STARTER_GUID, player->GetGUIDLow());
+                SetData(DATA_EVENT_STARTER_GUID, player->GetGUID().GetCounter());
                 Start(true, true, player->GetGUID(), quest);
             }
         }
@@ -541,7 +536,7 @@ public:
                         case PHASE_PLANT_FIRST_DETONATE: // first explosives detonate finish
                             for (GuidList::iterator itr = _explosivesGuids.begin(); itr != _explosivesGuids.end(); ++itr)
                             {
-                                if (GameObject* explosive = sObjectAccessor->GetGameObject(*me, *itr))
+                                if (GameObject* explosive = ObjectAccessor::GetGameObject(*me, *itr))
                                     me->RemoveGameObject(explosive, true);
                             }
                             _explosivesGuids.clear();
@@ -638,7 +633,7 @@ public:
                         case PHASE_PLANT_SECOND_DETONATE: // second explosives detonate finish
                             for (GuidList::iterator itr = _explosivesGuids.begin(); itr != _explosivesGuids.end(); ++itr)
                             {
-                                if (GameObject* explosive = sObjectAccessor->GetGameObject(*me, *itr))
+                                if (GameObject* explosive = ObjectAccessor::GetGameObject(*me, *itr))
                                     me->RemoveGameObject(explosive, true);
                             }
                             _explosivesGuids.clear();
@@ -808,10 +803,15 @@ public:
     private:
         int8 _phase;
         uint32 _moveTimer;
-        uint32 _eventStarterGuidLow;
+        ObjectGuid::LowType _eventStarterGuidLow;
         GuidList _explosivesGuids;
         EventMap _events;
     };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_demolitionist_legosoAI(creature);
+    }
 };
 
 void AddSC_bloodmyst_isle()

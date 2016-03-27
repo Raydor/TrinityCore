@@ -19,7 +19,7 @@
 #ifndef _PATH_GENERATOR_H
 #define _PATH_GENERATOR_H
 
-#include "SharedDefines.h"
+#include "MapDefines.h"
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"
 #include "MoveSplineInitArgs.h"
@@ -49,7 +49,7 @@ enum PathType
     PATHFIND_SHORT          = 0x20,   // path is longer or equal to its limited path length
 };
 
-class PathGenerator
+class TC_GAME_API PathGenerator
 {
     public:
         explicit PathGenerator(Unit const* owner);
