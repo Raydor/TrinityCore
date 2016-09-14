@@ -196,7 +196,8 @@ void Quest::LoadQuestTemplateAddon(Field* fields)
     RequiredMinRepValue = fields[13].GetInt32();
     RequiredMaxRepValue = fields[14].GetInt32();
     StartItemCount = fields[15].GetUInt8();
-    SpecialFlags = fields[16].GetUInt8();
+    RewardMailSenderEntry = fields[16].GetUInt32();
+    SpecialFlags = fields[17].GetUInt8();
 
     if (SpecialFlags & QUEST_SPECIAL_FLAGS_AUTO_ACCEPT)
         Flags |= QUEST_FLAGS_AUTO_ACCEPT;
@@ -277,6 +278,9 @@ bool Quest::IsRaidQuest(Difficulty difficulty) const
             break;
     }
 
+    if ((Flags & QUEST_FLAGS_RAID) != 0)
+        return true;
+
     return false;
 }
 
@@ -307,4 +311,11 @@ uint32 Quest::CalculateHonorGain(uint8 level) const
     }
 
     return honor;
+}
+
+bool Quest::CanIncreaseRewardedQuestCounters() const
+{
+    // Dungeon Finder/Daily/Repeatable (if not weekly, monthly or seasonal) quests are never considered rewarded serverside.
+    // This affects counters and client requests for completed quests.
+    return (!IsDFQuest() && !IsDaily() && (!IsRepeatable() || IsWeekly() || IsMonthly() || IsSeasonal()));
 }
